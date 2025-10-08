@@ -1,7 +1,8 @@
 /****************************************************************
 * TEAM 30: N. WEST and H. COLLINS
 * CPEG222 Lab1_Blink, 9/10/25
-* NucleoF466RE CMSIS STM32F4xx example Demo2 SSD
+* NucleoF466RE CMSIS STM32F4xx 
+Project 2B SSD with Interrupts
 ****************************************************************/
 
 #include "stm32f4xx.h" // Include the STM32F4xx CMSIS header file
@@ -15,8 +16,12 @@
 #define SEG_AF_PA9 9 // PA9
 #define SEG_AG_PA8 8 // PA8
 
-#define FREQUENCY 16000000UL // 16 MHz
+#define BTN_PIN (13) // Assuming User Button is connected to GPIOC pin 13
+#define BTN_PORT (GPIOC)
+#define LED_PIN_0 0
+#define LED_PIN_PORT GPIOC
 
+#define FREQUENCY 16000000UL // 16 MHz
 
 // function headers
 void SysTick_Handler();
@@ -48,7 +53,6 @@ void SEG_AF_on(void) {
 void SEG_AG_on(void) {
     GPIOA->ODR |= (1 << SEG_AG_PA8);
 }
-
 
 void clear_all_segments(void) {
     // PA5, PA6, PA7, PA9, PA8 are on port A
@@ -123,12 +127,39 @@ void TIM2_IRQHandler(void){
     TIM2->SR &= ~TIM_SR_UIF; // Clear the update interrupt flag
 }
 
+void EXTI15_10_IRQHandler(void) {
+    if (EXTI->PR & (1 << BTN_PIN)) { // Check if the interrupt is from BTN_PIN
+        EXTI->PR |= (1 << BTN_PIN); // Clear the pending interrupt
+            // to restart Systick timer
+    }
+      GPIOC->ODR ^= (1UL << 0);  // Flip bit 0
+
+    // ones = 0;
+    // tens = 0;
+    // SysTick->VAL = 0;                          // Clear current value
+    // SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Restart counting
+
+    // SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk; // Disable SysTick
+    // SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Enable SysTick
+}
+
+
+
+
+
+
 int main(void) {
+
+
+        // 2. Set PC0 as a general-purpose output
+    GPIOC->MODER &= ~(3UL << (0 * 2)); // Clear mode bits for PC0
+    GPIOC->MODER |=  (1UL << (0 * 2)); // Set PC0 as output (01)
 
     // Enable clock for GPIO ports A, B, C ✅
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOCEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN; // Enable SYSCFG clock for EXTI
 
     // Configure GPIO pins -> clear mode bits
     GPIOA->MODER &= ~(0x3 << (SEG_AA_PA5 * 2));
@@ -162,12 +193,21 @@ int main(void) {
     NVIC_SetPriority(TIM2_IRQn, 1); // Set priority for TIM2
     TIM2->CR1 = TIM_CR1_CEN; // Enable TIM
 
+    // Set up interrupts for the button here if needed
+    EXTI->IMR |= (1 << BTN_PIN); // Unmask EXTI line 13
+    EXTI->FTSR |= (1 << BTN_PIN); // Trigger on falling edge
+    //EXTI->RTSR |= (1 << BTN_PIN); // Trigger on rising edge
+    SYSCFG->EXTICR[3] &= ~(0xF << (1 * 4)); // Clear EXTI13 bits
+    SYSCFG->EXTICR[3] |= (2 << (1 * 4)); // Map EXTI13 to PC13
+    NVIC_SetPriority(EXTI15_10_IRQn, 0); // Set priority
+    NVIC_EnableIRQ(EXTI15_10_IRQn); // Enable EXTI line[15:10] interrupts in NVIC
+
     // Configure SysTick timer
     SysTick->LOAD = FREQUENCY - 1; // Load value for 250 ms at 16 MHz
     SysTick->VAL = 0; // Clear current value
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
     NVIC_SetPriority(SysTick_IRQn, 1); // Set the SysTick priority (optional)
-    
+
     while (1) { // Main loop to toggle through LED every second
     // # No need to update LED_STATUS here, it's handled in SysTick_Handler
     }
