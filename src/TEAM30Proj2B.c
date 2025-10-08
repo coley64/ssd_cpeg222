@@ -24,6 +24,7 @@ Project 2B SSD with Interrupts
 #define FREQUENCY 16000000UL // 16 MHz
 
 bool PAUSE = false; // Global variable to track pause state
+int tim_count = 0;
 
 // function headers
 void SysTick_Handler();
@@ -112,6 +113,7 @@ void displayNumber(int num){
 }
 
 void TIM2_IRQHandler(void){
+    tim_count++;
     if(TIM2->SR & TIM_SR_UIF){ // Check if the update interrupt flag is set
         if (digitSelect) { // If digitSelect is true, update the first digit
             GPIOB->ODR |= (1 << 10); // set cat to high
@@ -130,15 +132,29 @@ void TIM2_IRQHandler(void){
 }
 
 void EXTI15_10_IRQHandler(void) {
-    if (EXTI->PR & (1 << BTN_PIN)) { // Check if the interrupt is from BTN_PIN
-        EXTI->PR |= (1 << BTN_PIN); // Clear the pending interrupt
+    static volatile int last_press_time = 0;       // for debounce
+    static volatile int last_double_press_time = 0; // for double-press
+
+    // Check interrupt source
+    if (EXTI->PR & (1 << BTN_PIN)) {
+        EXTI->PR |= (1 << BTN_PIN); // Clear pending interrupt
     }
 
-    // ones = 0;
-    // tens = 0;
-    // SysTick->VAL = 0;                          // Clear current value
-    // SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Restart counting
-    if (PAUSE){
+    int current_time = tim_count;
+
+    // --- Debounce: ignore presses within 20ms ---
+    if (current_time - last_press_time < 100) return;
+    last_press_time = current_time;
+
+    // --- Double-press logic: within 500ms ---
+    if (current_time - last_double_press_time <= 1000000) {
+        SysTick->VAL = 0;                          // restart counter
+        SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // enable SysTick
+    }
+    last_double_press_time = current_time;
+
+    // --- Toggle PAUSE ---
+    if (PAUSE) {
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Enable SysTick
         PAUSE = false;
     } else {
