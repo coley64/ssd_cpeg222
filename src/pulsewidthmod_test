@@ -1,0 +1,42 @@
+/****************************************************************
+* TEAM 30: N. WEST and H. COLLINS
+* CPEG222 Lab1_Blink, 9/10/25
+* NucleoF466RE CMSIS STM32F4xx example Demo2 SSD
+****************************************************************/
+
+#include "stm32f4xx.h" // Include the STM32F4xx CMSIS header file
+#include <stdbool.h> // Needed to define true and false Booleans
+
+#define SEG_AA_PA5 5 // PA5
+
+void SysTick_Handler();
+
+// global
+
+void SysTick_Handler(void) {
+    GPIOA->ODR |= (1 << SEG_AA_PA5);
+}
+
+
+int main(void) {
+
+    // Enable clock for GPIO ports A, B, C ✅
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+
+    // Configure GPIO pins -> clear mode bits
+    GPIOA->MODER &= ~(0x3 << (SEG_AA_PA5 * 2));
+
+    // Configure GPIO pins -> general purpose output mode
+    GPIOA->MODER |= (0x1 << (SEG_AA_PA5 * 2));
+
+    // Configure SysTick timer
+    SysTick->LOAD = 160000 - 1; // Load value for 250 ms at 16 MHz
+    SysTick->VAL = 0; // Clear current value
+    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
+    NVIC_SetPriority(SysTick_IRQn, 1); // Set the SysTick priority (optional)
+    
+    while (1) { // Main loop to toggle through LED every second
+    // # No need to update LED_STATUS here, it's handled in SysTick_Handler
+    }
+    return(0);
+} 
