@@ -130,9 +130,8 @@ void TIM2_IRQHandler(void){
 void EXTI15_10_IRQHandler(void) {
     if (EXTI->PR & (1 << BTN_PIN)) { // Check if the interrupt is from BTN_PIN
         EXTI->PR |= (1 << BTN_PIN); // Clear the pending interrupt
-            // to restart Systick timer
     }
-      GPIOC->ODR ^= (1UL << 0);  // Flip bit 0
+    GPIOC->ODR ^= (1UL << 0);  // Flip bit 0
 
     // ones = 0;
     // tens = 0;
@@ -144,14 +143,9 @@ void EXTI15_10_IRQHandler(void) {
 }
 
 
-
-
-
-
 int main(void) {
-
-
-        // 2. Set PC0 as a general-purpose output
+    
+    // 2. Set PC0 as a general-purpose output
     GPIOC->MODER &= ~(3UL << (0 * 2)); // Clear mode bits for PC0
     GPIOC->MODER |=  (1UL << (0 * 2)); // Set PC0 as output (01)
 
