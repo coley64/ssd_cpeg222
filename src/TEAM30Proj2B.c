@@ -23,6 +23,8 @@ Project 2B SSD with Interrupts
 
 #define FREQUENCY 16000000UL // 16 MHz
 
+bool PAUSE = false; // Global variable to track pause state
+
 // function headers
 void SysTick_Handler();
 void TIM2_IRQHandler(void);
@@ -131,24 +133,23 @@ void EXTI15_10_IRQHandler(void) {
     if (EXTI->PR & (1 << BTN_PIN)) { // Check if the interrupt is from BTN_PIN
         EXTI->PR |= (1 << BTN_PIN); // Clear the pending interrupt
     }
-    GPIOC->ODR ^= (1UL << 0);  // Flip bit 0
 
     // ones = 0;
     // tens = 0;
     // SysTick->VAL = 0;                          // Clear current value
     // SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Restart counting
-
-    // SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk; // Disable SysTick
-    // SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Enable SysTick
+    if (PAUSE){
+        SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Enable SysTick
+        PAUSE = false;
+    } else {
+        SysTick->CTRL &= ~SysTick_CTRL_ENABLE_Msk; // Disable SysTick
+        PAUSE = true;
+    }
 }
 
 
 int main(void) {
     
-    // 2. Set PC0 as a general-purpose output
-    GPIOC->MODER &= ~(3UL << (0 * 2)); // Clear mode bits for PC0
-    GPIOC->MODER |=  (1UL << (0 * 2)); // Set PC0 as output (01)
-
     // Enable clock for GPIO ports A, B, C ✅
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
     RCC->AHB1ENR |= RCC_AHB1ENR_GPIOBEN;
@@ -164,6 +165,8 @@ int main(void) {
     GPIOB->MODER &= ~(0x3 << (SEG_AD_PB6 * 2));
     GPIOC->MODER &= ~(0x3 << (SEG_AE_PC7 * 2));
     GPIOB->MODER &= ~(0x3 << (10 * 2));
+    GPIOB->MODER &= ~(0x3 << (4 * 2));
+
 
     // Configure GPIO pins -> general purpose output mode
     GPIOA->MODER |= (0x1 << (SEG_AA_PA5 * 2));
@@ -174,6 +177,8 @@ int main(void) {
     GPIOB->MODER |= (0x1 << (SEG_AD_PB6 * 2));
     GPIOC->MODER |= (0x1 << (SEG_AE_PC7 * 2));
     GPIOB->MODER |= (0x1 << (10 * 2));
+    GPIOB->MODER |= (0x1 << (4 * 2));
+
 
     // Configure TIM2 for XX microseconds interrupt (assuming 16MHz HSI clock)
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN; // Enable TIM2 clock
@@ -197,11 +202,11 @@ int main(void) {
     NVIC_EnableIRQ(EXTI15_10_IRQn); // Enable EXTI line[15:10] interrupts in NVIC
 
     // Configure SysTick timer
-    SysTick->LOAD = FREQUENCY - 1; // Load value for 250 ms at 16 MHz
+    SysTick->LOAD = FREQUENCY / 4 - 1; // Load value for 250 ms at 16 MHz
     SysTick->VAL = 0; // Clear current value
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
     NVIC_SetPriority(SysTick_IRQn, 1); // Set the SysTick priority (optional)
-
+    
     while (1) { // Main loop to toggle through LED every second
     // # No need to update LED_STATUS here, it's handled in SysTick_Handler
     }
