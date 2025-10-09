@@ -23,7 +23,7 @@ Project 2B SSD with Interrupts
 
 #define FREQUENCY 16000000UL // 16 MHz
 
-bool PAUSE = false; // Global variable to track pause state
+bool PAUSE = true; // Global variable to track pause state
 int tim_count = 0;
 
 // function headers
@@ -113,7 +113,6 @@ void displayNumber(int num){
 }
 
 void TIM2_IRQHandler(void){
-    tim_count++;
     if(TIM2->SR & TIM_SR_UIF){ // Check if the update interrupt flag is set
         if (digitSelect) { // If digitSelect is true, update the first digit
             GPIOB->ODR |= (1 << 10); // set cat to high
@@ -129,6 +128,7 @@ void TIM2_IRQHandler(void){
     }
     digitSelect = !digitSelect; // Toggle digitSelect for next interrupt
     TIM2->SR &= ~TIM_SR_UIF; // Clear the update interrupt flag
+    tim_count++;
 }
 
 void EXTI15_10_IRQHandler(void) {
@@ -142,12 +142,14 @@ void EXTI15_10_IRQHandler(void) {
 
     int current_time = tim_count;
 
-    // --- Debounce: ignore presses within 20ms ---
-    if (current_time - last_press_time < 100) return;
+    // // --- Debounce: ignore presses within 20ms ---
+    if (current_time - last_press_time < 20) return;
     last_press_time = current_time;
 
     // --- Double-press logic: within 500ms ---
-    if (current_time - last_double_press_time <= 1000000) {
+    if (current_time - last_double_press_time <= 500 ) {
+        ones = 0;
+        tens = 0;
         SysTick->VAL = 0;                          // restart counter
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // enable SysTick
     }
@@ -199,7 +201,7 @@ int main(void) {
     // Configure TIM2 for XX microseconds interrupt (assuming 16MHz HSI clock)
     RCC->APB1ENR |= RCC_APB1ENR_TIM2EN; // Enable TIM2 clock
     TIM2->PSC = 15; // Prescaler: (16MHz/(15+1) = 1MHz, 1usec period)
-    TIM2->ARR = 10000 - 1; // Auto-reload when CNT = XX: (period = XX usec) 
+    TIM2->ARR = 1000 - 1; // Auto-reload when CNT = XX: (period = XX usec) 
     // setting timer for 10 us, if you want 60 hz then 1/60 = 0.0166667 sec = 16667 us
 
     TIM2->DIER |= TIM_DIER_UIE; // Enable update interrupt
@@ -220,7 +222,7 @@ int main(void) {
     // Configure SysTick timer
     SysTick->LOAD = FREQUENCY / 4 - 1; // Load value for 250 ms at 16 MHz
     SysTick->VAL = 0; // Clear current value
-    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk;
+    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk;
     NVIC_SetPriority(SysTick_IRQn, 1); // Set the SysTick priority (optional)
     
     while (1) { // Main loop to toggle through LED every second
