@@ -134,18 +134,19 @@ void TIM2_IRQHandler(void){
 void EXTI15_10_IRQHandler(void) {
     static volatile int last_press_time = 0;       // for debounce
     static volatile int last_double_press_time = 0; // for double-press
+    int current_time = tim_count;
 
     // Check interrupt source
     if (EXTI->PR & (1 << BTN_PIN)) {
         EXTI->PR |= (1 << BTN_PIN); // Clear pending interrupt
     }
 
-    int current_time = tim_count;
-
     // // --- Debounce: ignore presses within 20ms ---
-    if (current_time - last_press_time < 20) return;
+    if (current_time - last_press_time < 20) {
+        return;
+    }
+    
     last_press_time = current_time;
-
     // --- Double-press logic: within 500ms ---
     if (current_time - last_double_press_time <= 500 ) {
         ones = 0;
@@ -155,8 +156,8 @@ void EXTI15_10_IRQHandler(void) {
     }
     last_double_press_time = current_time;
 
-    // --- Toggle PAUSE ---
-    if (PAUSE) {
+    //  Toggle PAUSE logic
+        if (PAUSE) {
         SysTick->CTRL |= SysTick_CTRL_ENABLE_Msk;  // Enable SysTick
         PAUSE = false;
     } else {
