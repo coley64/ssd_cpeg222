@@ -220,7 +220,9 @@ int main(void) {
     NVIC_EnableIRQ(EXTI15_10_IRQn); // Enable EXTI line[15:10] interrupts in NVIC
 
     // Configure SysTick timer
-    SysTick->LOAD = FREQUENCY / 4 - 1; // Load value for 250 ms at 16 MHz
+    SysTick->LOAD = FREQUENCY - 1; // Load value for 250 ms at 16 MHz
+    //SysTick->LOAD = FREQUENCY / 4 - 1; // Load value for 250 ms at 16 MHz
+
     SysTick->VAL = 0; // Clear current value
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk;
     NVIC_SetPriority(SysTick_IRQn, 1); // Set the SysTick priority (optional)
